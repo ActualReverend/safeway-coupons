@@ -150,8 +150,12 @@ def chrome_driver(headless: bool = True) -> Iterator[uc.Chrome]:
     else:
         print("Running Chrome with a visible window")
     driver = uc.Chrome(options=options)
-    yield driver
-    driver.quit()
+    try:
+        yield driver
+    finally:
+        # Always quit so Chrome releases the persistent profile and flushes
+        # its cookies, even when authentication fails.
+        driver.quit()
 
 
 def chrome_driver_version() -> str:

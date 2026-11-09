@@ -71,6 +71,13 @@ def test_active_profile_locks_are_kept(
     assert lock.is_symlink()
 
 
+def test_driver_quits_when_authentication_fails() -> None:
+    with pytest.raises(RuntimeError), chrome_driver():
+        raise RuntimeError("authentication failed")
+
+    assert uc.Chrome.return_value.quit.called
+
+
 def test_default_uses_incognito() -> None:
     with chrome_driver():
         pass

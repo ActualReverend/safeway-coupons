@@ -18,6 +18,11 @@ Chrome. Authentication may fail based on your IP's reputation, either by
 presenting a CAPTCHA or denying sign in attempts altogether. safeway-coupons
 currently does not have support for prompting the user to solve CAPTCHAs.
 
+The production Docker setup gives Chrome a persistent profile on the
+`safeway_session` volume. That profile retains Safeway's device-trust data, so
+scheduled runs do not look like a brand new device every time. The first sign
+in from a new profile may require a one-time emailed device verification.
+
 Once a signed in session is established, coupon clipping is performed using HTTP
 requests via [requests][requests].
 
@@ -57,6 +62,10 @@ services:
       SAFEWAY_ACCOUNT_MAIL_TO: "${SAFEWAY_ACCOUNT_MAIL_TO:-}"
       # Save refreshed sessions across cron runs and container restarts
       SWY_SESSION_FILE: "${SWY_SESSION_FILE:-/data/safeway-session.json}"
+      # Persist Chrome's profile so Safeway remembers this device
+      SWY_CHROME_PROFILE: "${SWY_CHROME_PROFILE:-/data/chrome-profile}"
+      # Set to 0 to run Chrome visibly (one-time verification only)
+      SWY_CHROME_HEADLESS: "${SWY_CHROME_HEADLESS:-}"
       # Optional cookie auth (set both to skip browser login)
       SWY_SHARED_SESSION: "${SWY_SHARED_SESSION:-}"
       SWY_SHARED_SESSION_INFO: "${SWY_SHARED_SESSION_INFO:-}"
@@ -83,6 +92,10 @@ services:
       SAFEWAY_ACCOUNTS_FILE: /accounts_file
       # Save refreshed sessions across cron runs and container restarts
       SWY_SESSION_FILE: "${SWY_SESSION_FILE:-/data/safeway-session.json}"
+      # Persist Chrome's profile so Safeway remembers this device
+      SWY_CHROME_PROFILE: "${SWY_CHROME_PROFILE:-/data/chrome-profile}"
+      # Set to 0 to run Chrome visibly (one-time verification only)
+      SWY_CHROME_HEADLESS: "${SWY_CHROME_HEADLESS:-}"
       # Optional cookie auth (set both to skip browser login)
       SWY_SHARED_SESSION: "${SWY_SHARED_SESSION:-}"
       SWY_SHARED_SESSION_INFO: "${SWY_SHARED_SESSION_INFO:-}"
@@ -111,6 +124,7 @@ and development differ only in how the container runs:
 | Debug output | Off by default; enable with `EXTRA_ARGS: --debug` | Enabled (`-d`) |
 | Restart policy | `unless-stopped` | `no` |
 | Session state | Saved to the persistent `safeway_session` volume | Not persisted |
+| Chrome profile | Persisted on the `safeway_session` volume | Incognito, fresh each run |
 
 After pulling changes, rebuild and restart the production container:
 
@@ -190,6 +204,13 @@ A single Safeway account can be configured with environment variables:
   including any rotated refresh token, is saved and later reused. The
   production compose files set this to `/data/safeway-session.json` on a
   persistent volume. Delete the file to force a fresh browser login.
+* `SWY_CHROME_PROFILE`: Optional. Path to a persistent Chrome profile
+  directory. When set, Chrome reuses cookies and Safeway's device-trust data
+  between runs instead of starting in incognito. The production compose files
+  set this to `/data/chrome-profile` on the persistent volume.
+* `SWY_CHROME_HEADLESS`: Optional. Set to `0`, `false`, `no`, or `off` to run
+  Chrome with a visible window. This is only needed for the one-time
+  new-device verification described below.
 
 **Automatic refresh:** the Safeway access token is short-lived (about 45
 minutes). When a session is expired or about to expire and includes a
@@ -201,6 +222,41 @@ If a session is malformed, expired beyond refreshing, or the refresh request
 fails, the app prints a warning and falls back to browser login. A successful
 browser login also saves the session to `SWY_SESSION_FILE` when configured, so
 later runs reuse it.
+
+#### Persistent Chrome profile and device verification
+
+Safeway remembers trusted devices. A fresh incognito Chrome instance looks like
+a new device on every run, so Safeway may email a verification code and block
+unattended sign in. Setting `SWY_CHROME_PROFILE` avoids that by keeping Chrome's
+cookies and device-trust data between runs. The production compose files do
+this by default, storing the profile on the `safeway_session` volume.
+
+The first sign in from a new profile can still require verification. Headless
+Chrome cannot complete it, so do it once with a visible browser and the same
+profile:
+
+```console
+SWY_CHROME_PROFILE=/path/to/chrome-profile \
+    SWY_CHROME_HEADLESS=0 \
+    safeway-coupons -c path/to/config/file
+```
+
+Sign in, enter the emailed code, and stop the program after the sign in
+succeeds. Later headless runs that use the same `SWY_CHROME_PROFILE` reuse the
+trusted device. A display (or X11 forwarding) is required for this one-time
+step.
+
+If the Docker host has no display, complete the verification on a machine with
+a desktop and copy the resulting profile into the container's volume. For
+example, from the compose directory, with the verified profile in
+`./chrome-profile`:
+
+```console
+docker compose run --rm \
+    -v "$PWD/chrome-profile:/profile:ro" \
+    --entrypoint sh safeway-coupons \
+    -c 'rm -rf /data/chrome-profile && cp -a /profile /data/chrome-profile'
+```
 
 #### With config file
 

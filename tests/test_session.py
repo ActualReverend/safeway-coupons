@@ -64,10 +64,10 @@ def test_refresh_expired_env_cookie(
     http_responses: responses.RequestsMock,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setenv("SWY_SHARED_SESSION", encode_cookie(make_session_cookie()))
     monkeypatch.setenv(
-        "SWY_SHARED_SESSION_INFO", encode_cookie(SESSION_INFO)
+        "SWY_SHARED_SESSION", encode_cookie(make_session_cookie())
     )
+    monkeypatch.setenv("SWY_SHARED_SESSION_INFO", encode_cookie(SESSION_INFO))
     http_responses.add(
         responses.POST,
         DEFAULT_TOKEN_ENDPOINT,
@@ -96,13 +96,9 @@ def test_valid_env_cookie_is_not_refreshed(
     http_responses: responses.RequestsMock,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    cookie = make_session_cookie(
-        expireTime=int((time.time() + 3600) * 1000)
-    )
+    cookie = make_session_cookie(expireTime=int((time.time() + 3600) * 1000))
     monkeypatch.setenv("SWY_SHARED_SESSION", encode_cookie(cookie))
-    monkeypatch.setenv(
-        "SWY_SHARED_SESSION_INFO", encode_cookie(SESSION_INFO)
-    )
+    monkeypatch.setenv("SWY_SHARED_SESSION_INFO", encode_cookie(SESSION_INFO))
 
     session = LoginSession(create_account(), None)
 
@@ -116,10 +112,10 @@ def test_refresh_failure_falls_back_to_browser(
     monkeypatch: pytest.MonkeyPatch,
     mock_undetected_chromedriver: Any,
 ) -> None:
-    monkeypatch.setenv("SWY_SHARED_SESSION", encode_cookie(make_session_cookie()))
     monkeypatch.setenv(
-        "SWY_SHARED_SESSION_INFO", encode_cookie(SESSION_INFO)
+        "SWY_SHARED_SESSION", encode_cookie(make_session_cookie())
     )
+    monkeypatch.setenv("SWY_SHARED_SESSION_INFO", encode_cookie(SESSION_INFO))
     http_responses.add(
         responses.POST,
         DEFAULT_TOKEN_ENDPOINT,
@@ -141,9 +137,7 @@ def test_expired_cookie_without_refresh_token_falls_back(
     cookie = make_session_cookie()
     del cookie["refreshToken"]
     monkeypatch.setenv("SWY_SHARED_SESSION", encode_cookie(cookie))
-    monkeypatch.setenv(
-        "SWY_SHARED_SESSION_INFO", encode_cookie(SESSION_INFO)
-    )
+    monkeypatch.setenv("SWY_SHARED_SESSION_INFO", encode_cookie(SESSION_INFO))
 
     session = LoginSession(create_account(), None)
 

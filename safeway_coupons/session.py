@@ -484,8 +484,11 @@ class LoginSession(BaseSession):
                 raise AuthenticationFailure(
                     Exception(
                         "Safeway requires verification of a new device. "
-                        "Sign in once in a regular browser, complete the "
-                        "verification, or use SWY_SHARED_SESSION / "
+                        "Complete the verification once using a visible "
+                        "browser with the same SWY_CHROME_PROFILE (set "
+                        "SWY_CHROME_HEADLESS=0), then retry. The persistent "
+                        "profile remembers the device for later runs. "
+                        "Alternatively, set SWY_SHARED_SESSION / "
                         "SWY_SHARED_SESSION_INFO"
                     ),
                     account,

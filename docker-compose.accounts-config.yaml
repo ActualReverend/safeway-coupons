@@ -14,6 +14,12 @@ services:
       # Sessions are saved here so refreshed tokens survive cron runs and
       # container restarts. Backed by the safeway_session volume below.
       SWY_SESSION_FILE: "${SWY_SESSION_FILE:-/data/safeway-session.json}"
+      # Keep Chrome's profile (cookies and Safeway's device-trust data) on the
+      # same volume so new-device verification is only needed once.
+      SWY_CHROME_PROFILE: "${SWY_CHROME_PROFILE:-/data/chrome-profile}"
+      # Set to 0 to run Chrome visibly (one-time verification only; needs a
+      # display or X11 forwarding)
+      SWY_CHROME_HEADLESS: "${SWY_CHROME_HEADLESS:-}"
       # Cookie auth (optional, bypasses browser login). Export these in your
       # shell and they are passed through to the container. Expired tokens
       # are refreshed automatically when a refresh token is available.
